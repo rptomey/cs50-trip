@@ -17,7 +17,6 @@ app = Flask(__name__)
 # Ensure templates are auto-reloaded
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-
 # Ensure responses aren't cached
 @app.after_request
 def after_request(response):
@@ -42,8 +41,7 @@ if not os.environ.get("ORS_API_KEY"):
 def index():
     """Show current trip plans or send to instructions if no trips are in process"""
     user_id = session["user_id"]
-
-    # TODO: Make sure I'm not overwriting the trip ID when they return to the homepage if one is already set
+    
     # Get latest trip id
     con = sqlite3.connect("trip.db")
     cur = con.cursor()
@@ -54,22 +52,30 @@ def index():
         con.close()
         return redirect("/instructions")
 
-    # Set trip id based on last trip in table
-    trip_id = trip[0]["trip_id"]
-    session["trip_id"] = trip_id
+    # If no trip is selected, set trip id based on last trip in table
+    if not session["trip_id"]:
+        trip_id = trip[0]["trip_id"]
+        session["trip_id"] = trip_id
+    else:
+        trip_id = session["trip_id"]
 
     # Check permissions to see if they are the owner
     permissions = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
+
+    # Check if any plans are set for the trip
+    plans = cur.execute("SELECT * FROM plans WHERE trip_id = ?", trip_id)
+
     con.close()
 
-    # Display content if they are the trip owner
-    # TODO: Decide if this is worth the effort and what should be different.
-    # TODO: If I do decide to remove this, I have to remember to set trip owner in the session.
+    # If they are the owner of the current trip, set that at the session level
     if permissions[0]["user_permission"] == "owner":
         session["trip_owner"] =  "true"
-        return render_template("index.html", trip=trip)
 
-    # Otherwise display information about the trip
+    # If plans are available, include them in the page rendering
+    if len(plans) > 0:
+        return render_template("index.html", trip=trip, plans=plans)
+
+    # Otherwise just display information about the trip
     return render_template("index.html", trip=trip)
 
 @app.route("/instructions")
@@ -431,8 +437,9 @@ def set_plans():
     if request.method == "POST":
         trip_id = session["trip_id"]
 
-        # TODO: Figure out how to get data from the page and set it to the places array of JSON objects here
-        places = []
+        # Leverage fetch in JavaScript to get the information to here
+        # Tutorial on fetch: https://pythonise.com/series/learning-flask/flask-and-fetch-api
+        places = request.get_json
 
         if len(places) == 0:
             return apology("no places set", 400)
@@ -473,19 +480,19 @@ def set_plans():
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
         trip = cur.execute("SELECT * FROM trips WHERE trip_id = ?", trip_id)
-
-        # TODO: Fix this select so that it's only giving me one row per place, with an average score and total votes
-        # TODO: Break this into two selects so that we can separate the must haves out
+        
         # Get all potential places for this trip
-        places = cur.execute("SELECT * FROM places WHERE trip_id = ?", trip_id)
+        places_must_see = cur.execute("SELECT place_id, place_name, place_category, place_lat, place_long, AVG(place_interest) as average_interest, COUNT(user_id) as users_interested FROM trips WHERE trip_id = ? AND SUM(must_sees) > 0 GROUP BY place_id, place_name, place_category, place_lat, place_long", trip_id)
+        places_other = cur.execute("SELECT place_id, place_name, place_category, place_lat, place_long, AVG(place_interest) as average_interest, COUNT(user_id) as users_interested FROM trips WHERE trip_id = ? AND SUM(must_sees) = 0 GROUP BY place_id, place_name, place_category, place_lat, place_long", trip_id)
+        
         con.close()
 
         # Handle no places
-        if len(places) == 0:
+        if len(places_must_see) == 0 and len(places_other) == 0:
             return apology("no places have been added to this trip", 400)
 
         # Render the page with trip details and places available
-        return render_template("set-plans.html", trip=trip, places=places)
+        return render_template("set-plans.html", trip=trip, places_must_see=places_must_see, places_other=places_other)
 
 
 # Config errorhandler function
@@ -500,4 +507,5 @@ for code in default_exceptions:
     app.errorhandler(code)(errorhandler)
 
 # TODO: figure out how place categories are going to be implemented
+# TODO: add route for searching for places using fetch? or maybe form submit? tbd
 # TODO: all of the user interface stuff...
