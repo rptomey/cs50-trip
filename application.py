@@ -290,7 +290,7 @@ def manage_party():
     # Get list of users currently in party for this trip
     con = sqlite3.connect("trip.db")
     cur = con.cursor()
-    rows = cur.execute("SELECT u.username, p.user_permission FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ?", trip_id)
+    rows = cur.execute("SELECT u.username as user_name, p.user_permission as permission_level FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ?", trip_id)
     con.close()
 
     # Handle no users

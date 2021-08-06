@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Manage Party
+{% endblock %}
+
+{% block main %}
+    <div class="section" id="party-control-links">
+        <h1>Party Controls</h1>
+        <div class="list-group">
+            <a href="/add-party" class="list-group-item list-group-item-action">Add user to party</a>
+            <a href="/update-permissions" class="list-group-item list-group-item-action">Change user permissions</a>
+            <a href="/remove-party" class="list-group-item list-group-item-action">Remove user from party</a>
+        </div>
+    </div>
+    {% if party %}
+    <div class="section" id="party-container">
+        <h1>Current Party</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>
+                        Username
+                    </th>
+                    <th>
+                        Permission Level
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for person in party %}
+                    <tr>
+                        <td>
+                            {{ person.user_name }}
+                        </td>
+                        <td>
+                            {{ person.permission_level }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+      No party registered to trip.
+    </div>
+    {% endif %}
+{% endblock %}
