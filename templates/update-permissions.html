@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Remove Party
+{% endblock %}
+
+{% block main %}
+    <form action="/update-permissions" method="post">
+        <div class="form-group">
+            <select class="form-control" name="user_id">
+                <option value="" selected disabled>Username</option>
+            {% for user in users %}
+                <option value="{{ user.user_id }}">{{ user.user_name }} (Current: {{ user.user_permission }})</option>
+            {% endfor %}
+        </div>
+        <div class="form-group">
+            <select class="form-control" name="user_permission">
+                <option value="" selected disabled>Permission Level</option>
+                <option value="read">Read</option>
+                <option value="edit">Edit</option>
+                <option value="owner">Owner</option>
+            </select>
+        </div>
+        <button class="btn btn-primary" type="submit">Update User's Permissions</button>
+    </form>
+    <div class="section" id="permission-definitions">
+        <h2>Permission Definitions</h2>
+        <ul>
+            <li><b>Read:</b> See finalized plans for the trip.</li>
+            <li><b>Edit:</b> Suggest points of interest for the trip.</li>
+            <li><b>Owner:</b> Set trip schedule based on list of suggestions.</li>
+        </ul>
+    </div>
+    <div class="section">
+        <p>
+            Changing permissions for users on your trip will only affect their role within the currently selected trip.
+        </p>
+    </div>
+{% endblock %}

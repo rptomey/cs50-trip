@@ -342,16 +342,12 @@ def update_permissions():
 
     if request.method == "POST":
         # Get info from update form
-        user_name = request.form.get("user_name")
+        user_id = request.form.get("user_id")
         user_permission = request.form.get("user_permission")
 
-        # Get user id from users table
+        # Set new permission for the user for just this trip
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        rows = cur.execute("SELECT * FROM users WHERE username = ?", user_name)
-        user_id = rows[0]["user_id"]
-
-        # Set new permission for the user for just this trip
         cur.execute("UPDATE permissions SET user_permission = ? WHERE trip_id = ? AND user_id = ?", user_permission, trip_id, user_id)
         con.close()
         
@@ -362,7 +358,7 @@ def update_permissions():
         # Get usernames for this trip
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        users = cur.execute("SELECT u.username FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", trip_id)
+        users = cur.execute("SELECT u.user_id as user_id, u.username as user_name, p.user_permission as user_permission FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", trip_id)
         con.close()
 
         # Handle no users on trip
