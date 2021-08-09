@@ -308,15 +308,11 @@ def remove_party():
 
     if request.method == "POST":
         # Get info from deletion form
-        user_name = request.form.get("user_name")
-
-        # Get user id from users table
-        con = sqlite3.connect("trip.db")
-        cur = con.cursor()
-        rows = cur.execute("SELECT * FROM users WHERE username = ?", user_name)
-        user_id = rows[0]["user_id"]
+        user_id = request.form.get("user_id")
 
         # Delete user id from permissions table for just this trip
+        con = sqlite3.connect("trip.db")
+        cur = con.cursor()
         cur.execute("DELETE FROM permissions WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
         con.close()
         
@@ -327,7 +323,7 @@ def remove_party():
         # Get usernames for this trip
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        users = cur.execute("SELECT u.username FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", trip_id)
+        users = cur.execute("SELECT u.user_id as user_id, u.username as user_name FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", trip_id)
         con.close()
 
         # Handle no users on trip

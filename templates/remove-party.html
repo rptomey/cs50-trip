@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Remove Party
+{% endblock %}
+
+{% block main %}
+    <form action="/remove-party" method="post">
+        <div class="form-group">
+            <select class="form-control" name="user_id">
+                <option value="" selected disabled>Username</option>
+            {% for user in users %}
+                <option value="{{ user.user_id }}">{{ user.user_name }}</option>
+            {% endfor %}
+        </div>
+        <button class="btn btn-primary" type="submit">Remove User from Trip</button>
+    </form>
+    <div class="section">
+        <p>
+            Removing users from your trip will only affect their inclusion in the currently selected trip.
+        </p>
+        <p>
+            They will remain part of any other trips you share with them, as well as trips with others.
+        </p>
+    </div>
+{% endblock %}
