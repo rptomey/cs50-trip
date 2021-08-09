@@ -509,3 +509,5 @@ for code in default_exceptions:
 # TODO: figure out how place categories are going to be implemented
 # TODO: add route for searching for places using fetch? or maybe form submit? tbd
 # TODO: all of the user interface stuff...
+# TODO: add trip information to session when a trip is selected
+# TODO: use other session level trip information to add a banner to the top of the layout template, so that users can easily see which trip they have selected
