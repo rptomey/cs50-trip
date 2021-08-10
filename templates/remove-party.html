@@ -12,6 +12,7 @@
             {% for user in users %}
                 <option value="{{ user.user_id }}">{{ user.user_name }}</option>
             {% endfor %}
+            </select>
         </div>
         <button class="btn btn-primary" type="submit">Remove User from Trip</button>
     </form>

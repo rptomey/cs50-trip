@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Places
+{% endblock %}
+
+{% block main %}
+    <h2>Search Points of Interest by Name</h2>
+    <form action="/search-by-name" method="post">
+        <div class="form-group">
+            <input autocomplete="off" autofocus class="form-control" name="place_name" placeholder="Name" type="text">
+        </div>
+        <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+    <h2>Search Points of Interest by Category</h2>
+    <form action="/search-by-category" method="post">
+        <div class="form-group">
+            <select class="form-control" name="place_category">
+                <option value="" selected disabled>Category</option>
+                <option value="bar">Bar/Pub</option>
+                <option value="garden">Garden</option>
+                <option value="museum">Museum</option>
+                <option value="park">Park</option>
+                <option value="public-artwork">Public Artwork</option>
+                <option value="restaurant-full-service">Restaurant, Full Service</option>
+                <option value="restaurant-short-order">Restaurant, Short Order</option>
+                <option value="stadium">Stadium</option>
+                <option value="tourist-attraction">Tourist Attraction</option>
+                <option value="viewpoint">Viewpoint/Scenic Vista</option>
+                <option value="zoo">Zoo</option>
+        </div>
+        <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+    {% if places %}
+    <table>
+        <thead>
+            <tr>
+                <th>
+                    Name
+                </th>
+                <th>
+                    Category
+                </th>
+                <th>
+                    Latitude
+                </th>
+                <th>
+                    Longitude
+                </th>
+                <th>
+                    Interest
+                </th>
+                <th>
+                    Must See
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for place in places %}
+            <tr>
+                <td>
+                    {{ place.place_name }}
+                </td>
+                <td>
+                    {{ place.place_category }}
+                </td>
+                <td>
+                    {{ place.place_lat }}
+                </td>
+                <td>
+                    {{ place.place_long }}
+                </td>
+                <td>
+                    {{ place.place_interest }}
+                </td>
+                <td>
+                    {{ place.must_see }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+{% endblock %}

@@ -1,6 +1,7 @@
 import os
 import re
 import sqlite3
+import overpy
 
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
@@ -397,6 +398,8 @@ def places():
         # Add location to places table
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
+
+        # TODO: Handle place already added
         cur.execute("INSERT INTO places (trip_id, user_id, place_id, place_name, place_category, place_lat, place_long, place_interest, must_see) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", trip_id, user_id, place_id, place_name, place_category, place_lat, place_long, place_interest, place_must_see)
         con.close()
         return redirect("/places")
@@ -406,7 +409,11 @@ def places():
         cur = con.cursor()
         rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? ORDER BY place_name ASC", trip_id, user_id)
         con.close()
-        return render_template("places.html", places=rows)
+
+        if len(rows) > 0:
+            return render_template("places.html", places=rows)
+        else:
+            return render_template("places.html")
 
 @app.route("/trip-plans")
 @login_required
@@ -503,3 +510,51 @@ for code in default_exceptions:
 # TODO: all of the user interface stuff...
 # TODO: add trip information to session when a trip is selected
 # TODO: use other session level trip information to add a banner to the top of the layout template, so that users can easily see which trip they have selected
+# TODO: add code to places page to make sure the north/south/east/west coordinates are set for the trip
+
+# TODO: Incorporate these strings into a search for place by category function...
+@app.route("/search-by-category", methods=["POST"])
+@login_required
+def search_by_category():
+    place_category = request.form.get("place_category")
+
+    if place_category == "bar":
+        search_string = '"amenity"~"bar|pub"'
+    elif place_category == "garden":
+        search_string = '"leisure"="garden"'
+    elif place_category == "museum":
+        search_string = '"tourism"="museum"'
+    elif place_category == "park":
+        search_string = '"leisure"="park"'
+    elif place_category == "public-artwork":
+        search_string = '"tourism"="artwork"'
+    elif place_category == "restaurant-full-service":
+        search_string = '"amenity"="restaurant"'
+    elif place_category == "restaurant-short-order":
+        search_string = '"amenity"~"cafe|fast_food"'
+    elif place_category == "stadium":
+        search_string = "leisure=stadium"
+    elif place_category == "tourist-attraction":
+        search_string = "tourism=attraction"
+    elif place_category == "viewpoint":
+        search_string = "tourism=viewpoint"
+    elif place_category == "zoo":
+        search_string = "tourism=zoo"
+
+    # Set up Overpass API
+    overpass = overpy.Overpass()
+
+    # Get boundaries based on session
+    south = session["south"]
+    west = session["west"]
+    north = session["north"]
+    east = session["east"]
+
+    # Query the Overpass API
+    places = overpass.query(f"""
+        [out:json];
+        nwr[{search_string}]({south}, {west}, {north}, {east});
+        out center;
+        """)
+    
+    return render_template("places-results.html", places=places)
