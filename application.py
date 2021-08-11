@@ -3,7 +3,7 @@ import re
 import sqlite3
 import overpy
 
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
@@ -411,9 +411,9 @@ def places():
         con.close()
 
         if len(rows) > 0:
-            return render_template("places.html", places=rows)
+            return render_template("places.html", places=rows, center_lat=center_lat, center_long=center_long)
         else:
-            return render_template("places.html")
+            return render_template("places.html", center_lat=center_lat, center_long=center_long)
 
 @app.route("/trip-plans")
 @login_required
@@ -512,8 +512,7 @@ for code in default_exceptions:
 # TODO: use other session level trip information to add a banner to the top of the layout template, so that users can easily see which trip they have selected
 # TODO: add code to places page to make sure the north/south/east/west coordinates are set for the trip
 
-# TODO: Incorporate these strings into a search for place by category function...
-@app.route("/search-by-category", methods=["POST"])
+@app.route("/search-by-category")
 @login_required
 def search_by_category():
     place_category = request.form.get("place_category")
@@ -550,6 +549,10 @@ def search_by_category():
     north = session["north"]
     east = session["east"]
 
+    # Get center coordinates for map
+    center_lat = (float(north) + float(south)) / 2
+    center_long = (float(east) + float(west)) / 2
+
     # Query the Overpass API
     places = overpass.query(f"""
         [out:json];
@@ -557,9 +560,9 @@ def search_by_category():
         out center;
         """)
     
-    return render_template("places-results.html", places=places)
+    return render_template("places-results.html", places=places, center_lat=center_lat, center_long=center_long)
 
-@app.route("/search-by-name", methods=["POST"])
+@app.route("/search-by-name")
 @login_required
 def search_by_name():
     place_name = request.form.get("place_name")
@@ -574,11 +577,15 @@ def search_by_name():
     north = session["north"]
     east = session["east"]
 
+    # Get center coordinates for map
+    center_lat = (float(north) + float(south)) / 2
+    center_long = (float(east) + float(west)) / 2
+
     # Query the Overpass API
     places = overpass.query(f"""
         [out:json];
         nwr[{search_string}]({south}, {west}, {north}, {east});
         out center;
         """)
-    
-    return render_template("places-results.html", places=places)
+
+    return render_template("places-results.html", places=places, center_lat=center_lat, center_long=center_long)

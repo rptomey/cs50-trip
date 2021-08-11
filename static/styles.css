@@ -76,3 +76,7 @@ tbody .td-negative {
     padding-top: 1rem;
     border: 2px solid black;
 }
+
+#results-map {
+    height: 200px;
+}

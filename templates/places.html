@@ -5,15 +5,16 @@
 {% endblock %}
 
 {% block main %}
+    <h1>Place Search</h1>
     <h2>Search Points of Interest by Name</h2>
-    <form action="/search-by-name" method="post">
+    <form action="/search-by-name" method="get">
         <div class="form-group">
             <input autocomplete="off" autofocus class="form-control" name="place_name" placeholder="Name" type="text">
         </div>
         <button class="btn btn-primary" type="submit">Search</button>
     </form>
     <h2>Search Points of Interest by Category</h2>
-    <form action="/search-by-category" method="post">
+    <form action="/search-by-category" method="get">
         <div class="form-group">
             <select class="form-control" name="place_category">
                 <option value="" selected disabled>Category</option>
@@ -31,7 +32,9 @@
         </div>
         <button class="btn btn-primary" type="submit">Search</button>
     </form>
+
     {% if places %}
+    <h1>Places Added</h1>
     <table>
         <thead>
             <tr>
