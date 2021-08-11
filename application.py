@@ -558,3 +558,27 @@ def search_by_category():
         """)
     
     return render_template("places-results.html", places=places)
+
+@app.route("/search-by-name", methods=["POST"])
+@login_required
+def search_by_name():
+    place_name = request.form.get("place_name")
+    search_string = '"name"~"{}"'.format(place_name)
+
+    # Set up Overpass API
+    overpass = overpy.Overpass()
+
+    # Get boundaries based on session
+    south = session["south"]
+    west = session["west"]
+    north = session["north"]
+    east = session["east"]
+
+    # Query the Overpass API
+    places = overpass.query(f"""
+        [out:json];
+        nwr[{search_string}]({south}, {west}, {north}, {east});
+        out center;
+        """)
+    
+    return render_template("places-results.html", places=places)
