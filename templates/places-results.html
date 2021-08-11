@@ -28,12 +28,32 @@
             let point = places[i];
             let pointLat = point.lat;
             let pointLong = point.long;
+            let pointTags = point.tags;
+            let pointName = pointTags.name;
             let popupHTML = "<ul><li><b>Name:</b> "
-                + point.tags.name
+                + pointName
                 + "</li><li><b>Lat:</b> "
                 + pointLat
                 + "</li><li><b>Long:</b> "
-                + pointLong;
+                + pointLong
+                + "</li><li><b>Tags:</b> "
+                + pointTags
+                + "</li><form action='/places' method='post'><input type='hidden' name='place_name' value="
+                + pointName
+                + "><input type='hidden' name='place_lat' value="
+                + pointLat
+                + "><input type='hidden' name='place_long' value="
+                + pointLong
+                + "><input type='hidden' name='place_tags' value="
+                + JSON.stringify(pointTags)
+                + "><select class='form-control' name='place_interest'>"
+                + "<option value='' selected disabled>Interest Level</option>"
+                + "<option value='5'>5 (highest)</option>"
+                + "<option value='4'>4</option>"
+                + "<option value='3'>3</option>"
+                + "<option value='2'>2</option>"
+                + "<option value='1'>1 (lowest)</option></select>"
+                + "><button class='map-submit-button' type='submit'>Add to Places</button></form>";
             let marker = L.marker([pointLat, pointLong]).addTo(myMap);
             marker.bindPopup(popupHTML);
         }
