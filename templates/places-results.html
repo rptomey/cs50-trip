@@ -26,8 +26,9 @@
 
         for (let i = 0; i < places.length; i++) {
             let point = places[i];
+            let pointId = point.id;
             let pointLat = point.lat;
-            let pointLong = point.long;
+            let pointLong = point.lon;
             let pointTags = point.tags;
             let pointName = pointTags.name;
             let popupHTML = "<ul><li><b>Name:</b> "
@@ -40,6 +41,8 @@
                 + pointTags
                 + "</li><form action='/places' method='post'><input type='hidden' name='place_name' value="
                 + pointName
+                + "><input type='hidden' name='place_id' value="
+                + pointId
                 + "><input type='hidden' name='place_lat' value="
                 + pointLat
                 + "><input type='hidden' name='place_long' value="

@@ -380,7 +380,7 @@ def places():
         # Get the values from the form submit
         place_id = request.form.get("place_id")
         place_name = request.form.get("place_name")
-        place_category = request.form.get("place_category")
+        place_tags = request.form.get("place_tags")
         place_lat = request.form.get("place_lat")
         place_long = request.form.get("place_long")
         place_interest = request.form.get("place_interest")
@@ -392,15 +392,21 @@ def places():
             place_must_see = 0
 
         # Handle empty fields
-        if not place_id or not place_name or not place_category or not place_lat or not place_long or not place_interest:
+        if not place_id or not place_name or not place_tags or not place_lat or not place_long or not place_interest:
             return apology("missing place details", 400)
 
         # Add location to places table
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
 
-        # TODO: Handle place already added
-        cur.execute("INSERT INTO places (trip_id, user_id, place_id, place_name, place_category, place_lat, place_long, place_interest, must_see) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", trip_id, user_id, place_id, place_name, place_category, place_lat, place_long, place_interest, place_must_see)
+        # Check if user has already added the place
+        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? AND place_id = ?", trip_id, user_id, place_id)
+
+        if len(rows) > 0:
+            con.close()
+            return apology("place already added", 400)
+            
+        cur.execute("INSERT INTO places (trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, must_see) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, place_must_see)
         con.close()
         return redirect("/places")
 
