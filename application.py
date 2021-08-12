@@ -202,12 +202,20 @@ def select_trip():
     con = sqlite3.connect("trip.db")
     cur = con.cursor()
     rows = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
-    con.close()
 
     if rows[0]["user_permission"] == "owner":
         session["trip_owner"] = "true"
     else:
         session["trip_owner"] = "false"
+
+    # Add other info about the trip to session
+    city_query = cur.execute("SELECT c.city, c.south_lat, c.west_long, c.north_lat, c.east_long FROM cities c LEFT JOIN trips t ON t.city_id = c.city_id WHERE t.trip_id = ?", trip_id)
+    session["city"] = city_query[0]["c.city"]
+    session["south"] = city_query[0]["c.south_lat"]
+    session["west"] = city_query[0]["c.west_long"]
+    session["north"] = city_query[0]["c.north_lat"]
+    session["east"] = city_query[0]["c.east_long"]
+    con.close()
 
     # Send user to trips page
     return redirect("/trips")
@@ -509,7 +517,6 @@ def set_plans():
         # Render the page with trip details and places available
         return render_template("set-plans.html", trip=trip, places_must_see=places_must_see, places_other=places_other)
 
-
 # Config errorhandler function
 def errorhandler(e):
     """Handle error"""
@@ -521,8 +528,6 @@ def errorhandler(e):
 for code in default_exceptions:
     app.errorhandler(code)(errorhandler)
 
-# TODO: figure out how place categories are going to be implemented
-# TODO: add route for searching for places using fetch? or maybe form submit? tbd
 # TODO: all of the user interface stuff...
 # TODO: add trip information to session when a trip is selected
 # TODO: use other session level trip information to add a banner to the top of the layout template, so that users can easily see which trip they have selected
