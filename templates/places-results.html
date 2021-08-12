@@ -56,6 +56,10 @@
                 + "<option value='3'>3</option>"
                 + "<option value='2'>2</option>"
                 + "<option value='1'>1 (lowest)</option></select>"
+                + "<select class='form-control' name='place_must_see'>"
+                + "<option value='' selected disabled>Must See?</option>"
+                + "<option value='1'>Yes</option>"
+                + "<option value='0'>No</option></select>"
                 + "><button class='map-submit-button' type='submit'>Add to Places</button></form>";
             let marker = L.marker([pointLat, pointLong]).addTo(myMap);
             marker.bindPopup(popupHTML);

@@ -405,6 +405,16 @@ def places():
         if len(rows) > 0:
             con.close()
             return apology("place already added", 400)
+
+        # Check if user has exceed must see allotment for the trip
+        trip_query = cur.execute("SELECT must_sees WHERE trip_id = ?", trip_id)
+        allotment = trip_query[0]["must_sees"]
+        places_query = cur.execute("SELECT SUM(must_see) as total FROM places WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
+        must_see_total = places_query[0]["total"]
+
+        if must_see_total >= allotment:
+            con.close()
+            return apology("addition will exceed must see allotment for this trip", 400)
             
         cur.execute("INSERT INTO places (trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, must_see) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, place_must_see)
         con.close()
