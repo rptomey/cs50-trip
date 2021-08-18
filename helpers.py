@@ -79,3 +79,11 @@ def search_name_type_key(place_name, place_type, type_key):
         """)
     
     return result
+
+# Helper for accessing columns in sqlite by name instead of index
+# https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.row_factory
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d

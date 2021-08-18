@@ -627,6 +627,63 @@
             </div>
         </div>
     </div>
+
+    <div class="section" id="calendars">
+        <h2>Schedule by Day</h2>
+        <p>Here are your plans in progress. Once you submit this page, your trip will be finalized, and your party will be able to see the schedule.</p>
+        <div class="row mx-auto my-auto">
+            <div id="calendarCarousel" class="carousel slide w-100" data-ride="carousel">
+                <div class="carousel-inner w-100" role="listbox">
+                    {% for date in trip_dates %}
+                        {% if loop.index0 is 0 %}
+                        <div class="carousel-item active" id="date_{{ date }}">
+                            <div class="col-md-4">
+                                <div class="card card-body">
+                                    <h5 class="card-title">{{ date }}</h5>
+                                    <table>
+                                        <tr>
+                                            <th scope="row">Latitude:</th>
+                                            <td>{{ place.place_lat }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Longitude:</th>
+                                            <td>{{ place.place_long }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="carousel-item active" id="date_{{ date }}">
+                            <div class="col-md-4">
+                                <div class="card card-body">
+                                    <h5 class="card-title">{{ date }}</h5>
+                                    <table>
+                                        <tr>
+                                            <th scope="row">Latitude:</th>
+                                            <td>{{ place.place_lat }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th scope="row">Longitude:</th>
+                                            <td>{{ place.place_long }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                <a class="carousel-control-prev w-auto" href="#calendarCarousel" role="button" data-slide="prev">
+                    <span class="carousel-control-prev-icon bg-dark border border-dark rounded-circle" aria-hidden="true"></span>
+                    <span class="sr-only">Previous</span>
+                </a>
+                <a class="carousel-control-next w-auto" href="#calendarCarousel" role="button" data-slide="next">
+                    <span class="carousel-control-next-icon bg-dark border border-dark rounded-circle" aria-hidden="true"></span>
+                    <span class="sr-only">Next</span>
+                </a>
+            </div>
+        </div>
+    </div>
     
     <script>
         let tripArray = [];

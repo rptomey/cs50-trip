@@ -10,7 +10,7 @@ from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import login_required, owner_required, apology, set_city, search_name_type_key
+from helpers import login_required, owner_required, apology, set_city, search_name_type_key, dict_factory
 # TODO: Figure out if I need the unused helper functions and/or if I'm missing something important.
 
 # Configure application
@@ -46,8 +46,9 @@ def index():
     
     # Get latest trip id
     con = sqlite3.connect("trip.db")
+    con.row_factory = dict_factory
     cur = con.cursor()
-    trip = cur.execute("SELECT * FROM trips WHERE user_id = ? ORDER BY trip_id DESC LIMIT 1", user_id)
+    trip = cur.execute("SELECT * FROM permissions WHERE user_id = ? ORDER BY trip_id DESC LIMIT 1", [user_id]).fetchall()
 
     # Handle no trips
     if len(trip) == 0:
@@ -62,10 +63,10 @@ def index():
         trip_id = session["trip_id"]
 
     # Check permissions to see if they are the owner
-    permissions = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
+    permissions = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", [trip_id, user_id]).fetchall()
 
     # Check if any plans are set for the trip
-    plans = cur.execute("SELECT * FROM plans WHERE trip_id = ?", trip_id)
+    plans = cur.execute("SELECT * FROM plans WHERE trip_id = ?", [trip_id]).fetchall()
 
     con.close()
 
@@ -103,16 +104,22 @@ def login():
         if not request.form.get("password"):
             return apology("must provide password", 403)
 
+        # Set form values as variables
+        username = request.form.get("username")
+        password = request.form.get("password")
+
         # Query database for username
         con = sqlite3.connect("trip.db")
+        con.row_factory = dict_factory
         cur = con.cursor()
-        rows = cur.execute("SELECT * FROM users WHERE username = ?", request.form.get("username"))
+        rows = cur.execute("SELECT * FROM users WHERE username = ?", [username]).fetchall()
         con.close()
 
         # Ensure username exists and password is correct
-        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
+        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], password):
             return apology("invalid username and/or password", 403)
         
+        print(rows)
         # Remember which user has logged in
         session["user_id"] = rows[0]["user_id"]
 
@@ -147,15 +154,22 @@ def register():
         # Open the database and either handle already registered users or add them to the table
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        rows = cur.execute("SELECT * FROM users WHERE username = ?", username)
+        rows = cur.execute("SELECT * FROM users WHERE username = ?", [username]).fetchall()
 
         if len(rows) != 0:
             con.close()
             return apology("user already exists", 400)
 
         hashed_password = generate_password_hash(password)
-        cur.execute("INSERT INTO users (username, hash) VALUES (?, ?)", username, hashed_password)
+        cur.execute("INSERT INTO users (username, hash) VALUES (?, ?)", [username, hashed_password])
+        con.commit()
         con.close()
+
+        # Send to login page
+        return redirect("/")
+    
+    if request.method == "GET":
+        return render_template("register.html")
 
 @app.route("/create-trip", methods=["GET", "POST"])
 @login_required
@@ -176,12 +190,12 @@ def create_trip():
 
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        city_query = cur.execute("SELECT city_id, south_lat, west_long, north_lat, east_long FROM cities WHERE city = ?", trip_city)
+        city_query = cur.execute("SELECT city_id, south_lat, west_long, north_lat, east_long FROM cities WHERE city = ?", [trip_city])
         city_id = city_query[0]["city_id"]
         # TODO: Add values to session
-        cur.execute("INSERT INTO trips (trip_start_date, trip_end_date, city_id, must_sees) VALUES (?, ?, ?, ?)", trip_start_date, trip_end_date, city_id, trip_must_sees)
+        cur.execute("INSERT INTO trips (trip_start_date, trip_end_date, city_id, must_sees) VALUES (?, ?, ?, ?)", [trip_start_date, trip_end_date, city_id, trip_must_sees])
         trip_id = cur.execute("SELECT trip_id FROM trips WHERE user_id = ? ORDER BY trip_id DESC LIMIT 1")[0]["trip_id"]
-        cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", trip_id, user_id, "owner")
+        cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", [trip_id, user_id, "owner"])
         con.close()
         session["trip_id"] = trip_id
 
@@ -204,7 +218,7 @@ def select_trip():
     user_id = session["user_id"]
     con = sqlite3.connect("trip.db")
     cur = con.cursor()
-    rows = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
+    rows = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", [trip_id, user_id])
 
     if rows[0]["user_permission"] == "owner":
         session["trip_owner"] = "true"
@@ -212,7 +226,7 @@ def select_trip():
         session["trip_owner"] = "false"
 
     # Add other info about the trip to session
-    city_query = cur.execute("SELECT c.city, c.south_lat, c.west_long, c.north_lat, c.east_long FROM cities c LEFT JOIN trips t ON t.city_id = c.city_id WHERE t.trip_id = ?", trip_id)
+    city_query = cur.execute("SELECT c.city, c.south_lat, c.west_long, c.north_lat, c.east_long FROM cities c LEFT JOIN trips t ON t.city_id = c.city_id WHERE t.trip_id = ?", [trip_id])
     session["city"] = city_query[0]["c.city"]
     session["south"] = city_query[0]["c.south_lat"]
     session["west"] = city_query[0]["c.west_long"]
@@ -237,10 +251,10 @@ def trips():
     # Get data for current trip
     con = sqlite3.connect("trip.db")
     cur = con.cursor()
-    current_trip = cur.execute("SELECT * FROM trips WHERE trip_id = ?", trip_id)
+    current_trip = cur.execute("SELECT * FROM trips WHERE trip_id = ?", [trip_id])
 
     # Get data for all other trips
-    other_trips = cur.execute("SELECT * FROM trips WHERE user_id = ? AND trip_id != ?", user_id, trip_id)
+    other_trips = cur.execute("SELECT * FROM trips WHERE user_id = ? AND trip_id != ?", [user_id, trip_id])
     con.close()
 
     # Render trips page
@@ -267,7 +281,7 @@ def add_party():
         # Handle nonexistent user
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        rows = cur.execute("SELECT * FROM users WHERE username = ?", user_name)
+        rows = cur.execute("SELECT * FROM users WHERE username = ?", [user_name])
         
         if len(rows) != 1:
             con.close()
@@ -277,14 +291,14 @@ def add_party():
         user_id = rows[0]["user_id"]
 
         # Handle user already in trip
-        rows = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
+        rows = cur.execute("SELECT * FROM permissions WHERE trip_id = ? AND user_id = ?", [trip_id, user_id])
 
         if len(rows) > 0:
             con.close()
             return apology("user already invited to trip", 400)
 
         # Add user to permissions table
-        cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", trip_id, user_id, user_permission)
+        cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", [trip_id, user_id, user_permission])
         con.close()
 
         return redirect("/manage-party")
@@ -302,7 +316,7 @@ def manage_party():
     # Get list of users currently in party for this trip
     con = sqlite3.connect("trip.db")
     cur = con.cursor()
-    rows = cur.execute("SELECT u.username as user_name, p.user_permission as permission_level FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ?", trip_id)
+    rows = cur.execute("SELECT u.username as user_name, p.user_permission as permission_level FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ?", [trip_id])
     con.close()
 
     # Handle no users
@@ -325,7 +339,7 @@ def remove_party():
         # Delete user id from permissions table for just this trip
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        cur.execute("DELETE FROM permissions WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
+        cur.execute("DELETE FROM permissions WHERE trip_id = ? AND user_id = ?", [trip_id, user_id])
         con.close()
         
         # Send back to manage party page
@@ -335,7 +349,7 @@ def remove_party():
         # Get usernames for this trip
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        users = cur.execute("SELECT u.user_id as user_id, u.username as user_name FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", trip_id)
+        users = cur.execute("SELECT u.user_id as user_id, u.username as user_name FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", [trip_id])
         con.close()
 
         # Handle no users on trip
@@ -360,7 +374,7 @@ def update_permissions():
         # Set new permission for the user for just this trip
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        cur.execute("UPDATE permissions SET user_permission = ? WHERE trip_id = ? AND user_id = ?", user_permission, trip_id, user_id)
+        cur.execute("UPDATE permissions SET user_permission = ? WHERE trip_id = ? AND user_id = ?", [user_permission, trip_id, user_id])
         con.close()
         
         # Send back to manage party page
@@ -370,7 +384,7 @@ def update_permissions():
         # Get usernames for this trip
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        users = cur.execute("SELECT u.user_id as user_id, u.username as user_name, p.user_permission as user_permission FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", trip_id)
+        users = cur.execute("SELECT u.user_id as user_id, u.username as user_name, p.user_permission as user_permission FROM users u LEFT JOIN permissions p ON p.user_id = u.user_id WHERE p.trip_id = ? ORDER BY u.username ASC", [trip_id])
         con.close()
 
         # Handle no users on trip
@@ -411,30 +425,30 @@ def places():
         cur = con.cursor()
 
         # Check if user has already added the place
-        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? AND place_id = ?", trip_id, user_id, place_id)
+        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? AND place_id = ?", [trip_id, user_id, place_id])
 
         if len(rows) > 0:
             con.close()
             return apology("place already added", 400)
 
         # Check if user has exceed must see allotment for the trip
-        trip_query = cur.execute("SELECT must_sees WHERE trip_id = ?", trip_id)
+        trip_query = cur.execute("SELECT must_sees WHERE trip_id = ?", [trip_id])
         allotment = trip_query[0]["must_sees"]
-        places_query = cur.execute("SELECT SUM(must_see) as total FROM places WHERE trip_id = ? AND user_id = ?", trip_id, user_id)
+        places_query = cur.execute("SELECT SUM(must_see) as total FROM places WHERE trip_id = ? AND user_id = ?", [trip_id, user_id])
         must_see_total = places_query[0]["total"]
 
         if must_see_total >= allotment:
             con.close()
             return apology("addition will exceed must see allotment for this trip", 400)
             
-        cur.execute("INSERT INTO places (trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, must_see) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, place_must_see)
+        cur.execute("INSERT INTO places (trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, must_see) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, place_must_see])
         con.close()
         return redirect("/places")
 
     if request.method == "GET":
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? ORDER BY place_name ASC", trip_id, user_id)
+        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? ORDER BY place_name ASC", [trip_id, user_id])
         con.close()
 
         if len(rows) > 0:
@@ -450,7 +464,7 @@ def trip_plans():
     # Get trip plans from the database
     con = sqlite3.connect("trip.db")
     cur = con.cursor()
-    rows = cur.execute("SELECT * FROM plans WHERE trip_id = ?", trip_id)
+    rows = cur.execute("SELECT * FROM plans WHERE trip_id = ?", [trip_id])
     con.close()
 
     # Render page with trip plans
@@ -489,12 +503,12 @@ def set_plans():
                 activity_end_time = place["activity_end_time"]
                 activity_lat = place["activity_lat"]
                 activity_long = place["activity_long"]
-                cur.execute("INSERT INTO plans (trip_id, date, activity_index, activity_name, activity_type, activity_start_time, activity_end_time, activity_lat, activity_long) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", trip_id, date, activity_index, activity_name, activity_type, activity_start_time, activity_end_time, activity_lat, activity_long)
+                cur.execute("INSERT INTO plans (trip_id, date, activity_index, activity_name, activity_type, activity_start_time, activity_end_time, activity_lat, activity_long) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", [trip_id, date, activity_index, activity_name, activity_type, activity_start_time, activity_end_time, activity_lat, activity_long])
             elif activity_type == "travel":
                 activity_name = place["activity_name"]
                 activity_start_time = place["activity_start_time"]
                 activity_end_time = place["activity_end_time"]
-                cur.execute("INSERT INTO plans (trip_id, date, activity_name, activity_type, activity_start_time, activity_end_time) VALUES(?, ?, ?, ?, ?, ?)", trip_id, date, activity_name, activity_type, activity_start_time, activity_end_time)
+                cur.execute("INSERT INTO plans (trip_id, date, activity_name, activity_type, activity_start_time, activity_end_time) VALUES(?, ?, ?, ?, ?, ?)", [trip_id, date, activity_name, activity_type, activity_start_time, activity_end_time])
         
         con.close()
         return redirect("/trip-plans")
@@ -505,11 +519,11 @@ def set_plans():
         # Get trip details
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        trip = cur.execute("SELECT * FROM trips WHERE trip_id = ?", trip_id)
+        trip = cur.execute("SELECT * FROM trips WHERE trip_id = ?", [trip_id])
         
         # Get all potential places for this trip
-        places_must_see = cur.execute("SELECT place_id, place_name, place_category, place_lat, place_long, AVG(place_interest) as average_interest, COUNT(user_id) as users_interested FROM trips WHERE trip_id = ? AND SUM(must_sees) > 0 GROUP BY place_id, place_name, place_category, place_lat, place_long", trip_id)
-        places_other = cur.execute("SELECT place_id, place_name, place_category, place_lat, place_long, AVG(place_interest) as average_interest, COUNT(user_id) as users_interested FROM trips WHERE trip_id = ? AND SUM(must_sees) = 0 GROUP BY place_id, place_name, place_category, place_lat, place_long", trip_id)
+        places_must_see = cur.execute("SELECT place_id, place_name, place_category, place_lat, place_long, AVG(place_interest) as average_interest, COUNT(user_id) as users_interested FROM trips WHERE trip_id = ? AND SUM(must_sees) > 0 GROUP BY place_id, place_name, place_category, place_lat, place_long", [trip_id])
+        places_other = cur.execute("SELECT place_id, place_name, place_category, place_lat, place_long, AVG(place_interest) as average_interest, COUNT(user_id) as users_interested FROM trips WHERE trip_id = ? AND SUM(must_sees) = 0 GROUP BY place_id, place_name, place_category, place_lat, place_long", [trip_id])
         
         con.close()
 
