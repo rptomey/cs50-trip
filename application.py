@@ -2,6 +2,7 @@ import os
 import re
 import sqlite3
 import overpy
+import datetime
 
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
@@ -175,7 +176,9 @@ def create_trip():
 
         con = sqlite3.connect("trip.db")
         cur = con.cursor()
-        city_id = cur.execute("SELECT city_id FROM cities WHERE city = ?", trip_city)[0]["city_id"]
+        city_query = cur.execute("SELECT city_id, south_lat, west_long, north_lat, east_long FROM cities WHERE city = ?", trip_city)
+        city_id = city_query[0]["city_id"]
+        # TODO: Add values to session
         cur.execute("INSERT INTO trips (trip_start_date, trip_end_date, city_id, must_sees) VALUES (?, ?, ?, ?)", trip_start_date, trip_end_date, city_id, trip_must_sees)
         trip_id = cur.execute("SELECT trip_id FROM trips WHERE user_id = ? ORDER BY trip_id DESC LIMIT 1")[0]["trip_id"]
         cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", trip_id, user_id, "owner")
@@ -514,8 +517,23 @@ def set_plans():
         if len(places_must_see) == 0 and len(places_other) == 0:
             return apology("no places have been added to this trip", 400)
 
+        # Create an array of dates
+        trip_start = trip[0]["trip_start_date"]
+        trip_end = trip[0]["trip_end_date"]
+        start_date = datetime.datetime.strptime(trip_start, "%Y-%m-%d")
+        end_date = datetime.datetime.strptime(trip_end, "%Y-%m-%d")
+        date_delta = end_date - start_date
+        trip_duration = date_delta.days
+
+        trip_dates = []
+
+        for i in range(trip_duration + 1):
+            date = start_date + datetime.timedelta(days=i)
+            s_date = datetime.datetime.strftime(date, "%Y-%m-%d")
+            trip_dates.append(s_date)
+
         # Render the page with trip details and places available
-        return render_template("set-plans.html", trip=trip, places_must_see=places_must_see, places_other=places_other)
+        return render_template("set-plans.html", trip=trip, places_must_see=places_must_see, places_other=places_other, trip_dates=trip_dates)
 
 # Config errorhandler function
 def errorhandler(e):
