@@ -180,29 +180,49 @@ def create_trip():
     if request.method == "POST":
         # Get the values from the form submit
         trip_city = request.form.get("trip_city")
-        trip_start_date = request.form.get("trip_start_date")
-        trip_end_date = request.form.get("trip_end_date")
+        trip_start = request.form.get("trip_start_date")
+        trip_end = request.form.get("trip_end_date")
         trip_must_sees = request.form.get("trip_must_sees")
 
         # Handle empty fields
-        if not trip_city or not trip_start_date or not trip_end_date:
+        if not trip_city or not trip_start or not trip_end or not trip_must_sees:
             return apology("missing trip details", 400)
 
+        # Handle invalid date range
+        trip_start_date = datetime.datetime.strptime(trip_start, "%Y-%m-%d")
+        trip_end_date = datetime.datetime.strptime(trip_end, "%Y-%m-%d")
+        if trip_start_date > trip_end_date:
+            return apology("invalid date range", 400)
+
         con = sqlite3.connect("trip.db")
+        con.row_factory = dict_factory
         cur = con.cursor()
-        city_query = cur.execute("SELECT city_id, south_lat, west_long, north_lat, east_long FROM cities WHERE city = ?", [trip_city])
+        city_query = cur.execute("SELECT city_id, south_lat, west_long, north_lat, east_long FROM cities WHERE city = ?", [trip_city]).fetchall()
         city_id = city_query[0]["city_id"]
-        # TODO: Add values to session
         cur.execute("INSERT INTO trips (trip_start_date, trip_end_date, city_id, must_sees) VALUES (?, ?, ?, ?)", [trip_start_date, trip_end_date, city_id, trip_must_sees])
+        con.commit()
         trip_id = cur.execute("SELECT trip_id FROM trips WHERE user_id = ? ORDER BY trip_id DESC LIMIT 1")[0]["trip_id"]
         cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", [trip_id, user_id, "owner"])
+        con.commit()
         con.close()
         session["trip_id"] = trip_id
+        session["city"] = trip_city
+        session["south"] = city_query[0]["south_lat"]
+        session["west"] = city_query[0]["west_long"]
+        session["north"] = city_query[0]["north_lat"]
+        session["east"] = city_query[0]["east_long"]
 
         return redirect("/")
 
     if request.method == "GET":
-        return render_template("create-trip.html")
+        # Get the supported cities
+        con = sqlite3.connect("trip.db")
+        con.row_factory = dict_factory
+        cur = con.cursor()
+        cities = cur.execute("SELECT city FROM cities").fetchall()
+        con.close()
+
+        return render_template("create-trip.html", cities=cities)
 
 @app.route("/select-trip", methods=["POST"])
 @login_required
