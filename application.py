@@ -199,9 +199,9 @@ def create_trip():
         cur = con.cursor()
         city_query = cur.execute("SELECT city_id, south_lat, west_long, north_lat, east_long FROM cities WHERE city = ?", [trip_city]).fetchall()
         city_id = city_query[0]["city_id"]
-        cur.execute("INSERT INTO trips (trip_start_date, trip_end_date, city_id, must_sees) VALUES (?, ?, ?, ?)", [trip_start_date, trip_end_date, city_id, trip_must_sees])
+        cur.execute("INSERT INTO trips (trip_start_date, trip_end_date, city_id, must_sees, creator_user_id) VALUES (?, ?, ?, ?, ?)", [trip_start_date, trip_end_date, city_id, trip_must_sees, user_id])
         con.commit()
-        trip_id = cur.execute("SELECT trip_id FROM trips WHERE user_id = ? ORDER BY trip_id DESC LIMIT 1")[0]["trip_id"]
+        trip_id = cur.execute("SELECT trip_id FROM trips WHERE creator_user_id = ? ORDER BY trip_id DESC LIMIT 1", [user_id])[0]["trip_id"]
         cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", [trip_id, user_id, "owner"])
         con.commit()
         con.close()
@@ -261,7 +261,7 @@ def select_trip():
 @login_required
 def trips():
     # Handle no trip id in session
-    if not session["trip_id"]:
+    if session.get("trip_id") is None:
         return redirect("/create-trip")
 
     # Get trip id and user id from session
