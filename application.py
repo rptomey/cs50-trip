@@ -3,6 +3,8 @@ import re
 import sqlite3
 import overpy
 import datetime
+import json
+import requests
 
 from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_session import Session
@@ -56,7 +58,7 @@ def index():
         return redirect("/instructions")
 
     # If no trip is selected, set trip id based on last trip in table
-    if not session["trip_id"]:
+    if session.get("trip_id") is None:
         trip_id = trip[0]["trip_id"]
         session["trip_id"] = trip_id
     else:
@@ -201,7 +203,7 @@ def create_trip():
         city_id = city_query[0]["city_id"]
         cur.execute("INSERT INTO trips (trip_start_date, trip_end_date, city_id, must_sees, creator_user_id) VALUES (?, ?, ?, ?, ?)", [trip_start_date, trip_end_date, city_id, trip_must_sees, user_id])
         con.commit()
-        trip_id = cur.execute("SELECT trip_id FROM trips WHERE creator_user_id = ? ORDER BY trip_id DESC LIMIT 1", [user_id])[0]["trip_id"]
+        trip_id = cur.execute("SELECT trip_id FROM trips WHERE creator_user_id = ? ORDER BY trip_id DESC LIMIT 1", [user_id]).fetchall()[0]["trip_id"]
         cur.execute("INSERT INTO permissions (trip_id, user_id, user_permission) VALUES (?, ?, ?)", [trip_id, user_id, "owner"])
         con.commit()
         con.close()
@@ -274,7 +276,7 @@ def trips():
     current_trip = cur.execute("SELECT * FROM trips WHERE trip_id = ?", [trip_id])
 
     # Get data for all other trips
-    other_trips = cur.execute("SELECT * FROM trips WHERE user_id = ? AND trip_id != ?", [user_id, trip_id])
+    other_trips = cur.execute("SELECT * FROM trips t LEFT JOIN permissions p on t.trip_id = p.trip_id WHERE p.user_id = ? AND p.trip_id != ?", [user_id, trip_id])
     con.close()
 
     # Render trips page
@@ -442,6 +444,7 @@ def places():
 
         # Add location to places table
         con = sqlite3.connect("trip.db")
+        con.row_factory = dict_factory
         cur = con.cursor()
 
         # Check if user has already added the place
@@ -467,14 +470,20 @@ def places():
 
     if request.method == "GET":
         con = sqlite3.connect("trip.db")
+        con.row_factory = dict_factory
         cur = con.cursor()
-        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? ORDER BY place_name ASC", [trip_id, user_id])
+        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? ORDER BY place_name ASC", [trip_id, user_id]).fetchall()
+        coordinates = cur.execute("SELECT c.south_lat as south, c.west_long as west, c.north_lat as north, c.east_long as east FROM cities c LEFT JOIN trips t on c.city_id = t.city_id WHERE t.trip_id = ?", [trip_id]).fetchall()
+        session["south"] = coordinates[0]["south"]
+        session["west"] = coordinates[0]["west"]
+        session["north"] = coordinates[0]["north"]
+        session["east"] = coordinates[0]["east"]
         con.close()
 
         if len(rows) > 0:
-            return render_template("places.html", places=rows, center_lat=center_lat, center_long=center_long)
+            return render_template("places.html", places=rows)
         else:
-            return render_template("places.html", center_lat=center_lat, center_long=center_long)
+            return render_template("places.html")
 
 @app.route("/trip-plans")
 @login_required
@@ -585,7 +594,7 @@ for code in default_exceptions:
 # TODO: use other session level trip information to add a banner to the top of the layout template, so that users can easily see which trip they have selected
 # TODO: add code to places page to make sure the north/south/east/west coordinates are set for the trip
 
-@app.route("/search-by-category")
+@app.route("/search-by-category", methods=["POST"])
 @login_required
 def search_by_category():
     place_category = request.form.get("place_category")
@@ -617,22 +626,41 @@ def search_by_category():
     overpass = overpy.Overpass()
 
     # Get boundaries based on session
-    south = session["south"]
-    west = session["west"]
-    north = session["north"]
-    east = session["east"]
+    south = session.get("south")
+    west = session.get("west")
+    north = session.get("north")
+    east = session.get("east")
 
     # Get center coordinates for map
     center_lat = (float(north) + float(south)) / 2
     center_long = (float(east) + float(west)) / 2
 
-    # Query the Overpass API
-    places = overpass.query(f"""
+    overpass_url = "http://overpass-api.de/api/interpreter"
+    overpass_query = f"""
         [out:json];
         nwr[{search_string}]({south}, {west}, {north}, {east});
         out center;
-        """)
+        """
+    response = requests.get(overpass_url, 
+                            params={'data': overpass_query})
+    places = response.json()["elements"]
+    print(places)
+
     
+    # Query the Overpass API
+   # places = overpass.query(f"""
+        #[out:json];
+       # nwr[{search_string}]({south}, {west}, {north}, {east});
+       # out center;
+       # """)
+    
+   # print("hello")
+   # print(places)
+  #  print("here comes the json")
+  #  place_json = places.json()
+   # print(place_json)
+    
+
     return render_template("places-results.html", places=places, center_lat=center_lat, center_long=center_long)
 
 @app.route("/search-by-name")
@@ -645,10 +673,10 @@ def search_by_name():
     overpass = overpy.Overpass()
 
     # Get boundaries based on session
-    south = session["south"]
-    west = session["west"]
-    north = session["north"]
-    east = session["east"]
+    south = session.get("south")
+    west = session.get("west")
+    north = session.get("north")
+    east = session.get("east")
 
     # Get center coordinates for map
     center_lat = (float(north) + float(south)) / 2

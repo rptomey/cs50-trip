@@ -27,8 +27,18 @@
         for (let i = 0; i < places.length; i++) {
             let point = places[i];
             let pointId = point.id;
-            let pointLat = point.lat;
-            let pointLong = point.lon;
+            let pointLat = "";
+            let pointLong = "";
+            if (point.hasOwnProperty('center')) {
+                console.log("center exists");
+                pointLat = point.center.lat;
+                pointLong = point.center.lon;
+            }
+            else {
+                console.log("center doesn't exist");
+                pointLat = point.lat;
+                pointLong = point.lon;
+            }
             let pointTags = point.tags;
             let pointName = pointTags.name;
             let popupHTML = "<ul><li><b>Name:</b> "
