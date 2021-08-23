@@ -1,8 +1,6 @@
 # Ptrips
-#### Video Demo:  <URL HERE>
+#### Video Demo:  https://youtu.be/Vfz6YrqlJyc
 #### Description:
-Your README.md file should be minimally multiple paragraphs in length, and should explain what your project is, what each of the files you wrote for the project contains and does, and if you debated certain design choices, explaining why you made them. Ensure you allocate sufficient time and energy to writing a README.md that you are proud of and that documents your project thoroughly. Be proud of it!
-
 The Ptrips web app came to me as an idea to create a place to collaboratively plan trips with other people. When going sightseeing or out to restaurants, it can be hard to make sure that everyone's wishes are being met. While I wasn't able to finish building Ptrips during the time I allotted for my final project, I plan to eventually follow through on the rest of the features because I think it will make for a good portfolio piece. That said, I'll walk through what I was and wasn't able to complete - as well as some of the noteworthy parts of the design and development process.
 
 Ptrips' scope encompassed a lot of functionality, ranging from group management and permissions to creating an itinerary. I was able to complete the following components:
