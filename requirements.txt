@@ -10,3 +10,5 @@ werkzeug.security
 urllib.parse
 functools
 overpy
+json
+requests
