@@ -13,7 +13,7 @@
         const centerLat = document.querySelector("#myData").dataset.maplat;
         const centerLong = document.querySelector("#myData").dataset.maplong;
 
-        let myMap = L.map('results-map').setView([centerLat, centerLong], 13);
+        let myMap = L.map('results-map').setView([centerLat, centerLong], 12);
 
         L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
             attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -39,8 +39,8 @@
                 pointLat = point.lat;
                 pointLong = point.lon;
             }
-            let pointTags = point.tags;
-            let pointName = pointTags.name;
+            let pointTags = JSON.stringify(point.tags);
+            let pointName = point.tags.name;
             let popupHTML = "<ul><li><b>Name:</b> "
                 + pointName
                 + "</li><li><b>Lat:</b> "
@@ -58,7 +58,7 @@
                 + "><input type='hidden' name='place_long' value="
                 + pointLong
                 + "><input type='hidden' name='place_tags' value="
-                + JSON.stringify(pointTags)
+                + pointTags
                 + "><select class='form-control' name='place_interest'>"
                 + "<option value='' selected disabled>Interest Level</option>"
                 + "<option value='5'>5 (highest)</option>"

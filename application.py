@@ -1,7 +1,6 @@
 import os
 import re
 import sqlite3
-import overpy
 import datetime
 import json
 import requests
@@ -431,12 +430,7 @@ def places():
         place_lat = request.form.get("place_lat")
         place_long = request.form.get("place_long")
         place_interest = request.form.get("place_interest")
-        
-        # Handle value for must sees
-        if request.form.get("place_must_see"):
-            place_must_see = 1
-        else:
-            place_must_see = 0
+        place_must_see = request.form.get("place_must_see")
 
         # Handle empty fields
         if not place_id or not place_name or not place_tags or not place_lat or not place_long or not place_interest:
@@ -448,23 +442,25 @@ def places():
         cur = con.cursor()
 
         # Check if user has already added the place
-        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? AND place_id = ?", [trip_id, user_id, place_id])
+        rows = cur.execute("SELECT * FROM places WHERE trip_id = ? AND user_id = ? AND place_id = ?", [trip_id, user_id, place_id]).fetchall()
 
         if len(rows) > 0:
             con.close()
             return apology("place already added", 400)
 
-        # Check if user has exceed must see allotment for the trip
-        trip_query = cur.execute("SELECT must_sees WHERE trip_id = ?", [trip_id])
+        # Check if user has exceeded must see allotment for the trip
+        trip_query = cur.execute("SELECT must_sees FROM trips WHERE trip_id = ?", [trip_id]).fetchall()
         allotment = trip_query[0]["must_sees"]
-        places_query = cur.execute("SELECT SUM(must_see) as total FROM places WHERE trip_id = ? AND user_id = ?", [trip_id, user_id])
-        must_see_total = places_query[0]["total"]
+        places_query = cur.execute("SELECT SUM(must_see) as total FROM places WHERE trip_id = ? AND user_id = ?", [trip_id, user_id]).fetchall()
 
-        if must_see_total >= allotment:
-            con.close()
-            return apology("addition will exceed must see allotment for this trip", 400)
+        if places_query[0]["total"] is not None:
+            must_see_total = places_query[0]["total"] + int(place_must_see)
+            if must_see_total > allotment:
+                con.close()
+                return apology("addition will exceed must see allotment for this trip", 400)
             
         cur.execute("INSERT INTO places (trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, must_see) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [trip_id, user_id, place_id, place_name, place_tags, place_lat, place_long, place_interest, place_must_see])
+        con.commit()
         con.close()
         return redirect("/places")
 
@@ -622,9 +618,6 @@ def search_by_category():
     elif place_category == "zoo":
         search_string = "tourism=zoo"
 
-    # Set up Overpass API
-    overpass = overpy.Overpass()
-
     # Get boundaries based on session
     south = session.get("south")
     west = session.get("west")
@@ -635,42 +628,23 @@ def search_by_category():
     center_lat = (float(north) + float(south)) / 2
     center_long = (float(east) + float(west)) / 2
 
+    # Query the Overpass API
     overpass_url = "http://overpass-api.de/api/interpreter"
     overpass_query = f"""
         [out:json];
         nwr[{search_string}]({south}, {west}, {north}, {east});
         out center;
         """
-    response = requests.get(overpass_url, 
-                            params={'data': overpass_query})
+    response = requests.get(overpass_url, params={'data': overpass_query})
     places = response.json()["elements"]
-    print(places)
-
-    
-    # Query the Overpass API
-   # places = overpass.query(f"""
-        #[out:json];
-       # nwr[{search_string}]({south}, {west}, {north}, {east});
-       # out center;
-       # """)
-    
-   # print("hello")
-   # print(places)
-  #  print("here comes the json")
-  #  place_json = places.json()
-   # print(place_json)
-    
 
     return render_template("places-results.html", places=places, center_lat=center_lat, center_long=center_long)
 
-@app.route("/search-by-name")
+@app.route("/search-by-name", methods=["POST"])
 @login_required
 def search_by_name():
     place_name = request.form.get("place_name")
     search_string = '"name"~"{}"'.format(place_name)
-
-    # Set up Overpass API
-    overpass = overpy.Overpass()
 
     # Get boundaries based on session
     south = session.get("south")
@@ -683,10 +657,13 @@ def search_by_name():
     center_long = (float(east) + float(west)) / 2
 
     # Query the Overpass API
-    places = overpass.query(f"""
+    overpass_url = "http://overpass-api.de/api/interpreter"
+    overpass_query = f"""
         [out:json];
         nwr[{search_string}]({south}, {west}, {north}, {east});
         out center;
-        """)
+        """
+    response = requests.get(overpass_url, params={'data': overpass_query})
+    places = response.json()["elements"]
 
     return render_template("places-results.html", places=places, center_lat=center_lat, center_long=center_long)
